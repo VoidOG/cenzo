@@ -1,7 +1,7 @@
 import asyncio
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from telethon.tl.types import InputPeerChannel, InputThread
+from telethon.tl.types import InputPeerChannel, InputForumTopic
 
 # Configuration
 API_ID = 26075878  # Replace with your API ID
@@ -28,8 +28,9 @@ async def forward_messages(client, message):
             if chat_username in FORUM_TOPICS:
                 # Send message to a specific topic inside a forum
                 topic_id = FORUM_TOPICS[chat_username]
-                thread = InputThread(dialog.entity.id, topic_id)
-                task = client.forward_messages(thread, message)
+                peer = await client.get_input_entity(chat_username)
+                forum_topic = InputForumTopic(peer, topic_id)
+                task = client.forward_messages(forum_topic, message)
             else:
                 # Send message to normal group
                 task = client.forward_messages(dialog.entity.id, message)
