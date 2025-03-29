@@ -1,5 +1,5 @@
 import asyncio
-from telethon import TelegramClient
+from telethon import TelegramClient, errors
 from telethon.sessions import StringSession
 
 # Configuration
@@ -7,7 +7,7 @@ API_ID = 26075878  # Replace with your API ID
 API_HASH = "7146213fe4324fcaca1bb6be7a2aef33"  # Replace with your API hash
 SESSION_STRING = input("Enter your Telethon string session: ").strip()
 
-DELAY = 3600  # Delay in seconds between batches
+DELAY = 3600  # Delay before the next batch
 
 # Forum groups with specific topic IDs
 FORUM_TOPICS = {
@@ -18,24 +18,31 @@ FORUM_TOPICS = {
 
 async def forward_messages(client, message):
     dialogs = await client.get_dialogs()
-
     tasks = []
+
     for dialog in dialogs:
         if dialog.is_group:
             chat_username = dialog.entity.username
 
-            if chat_username in FORUM_TOPICS:
-                # Send message to a specific topic inside a forum
-                topic_id = FORUM_TOPICS[chat_username]
-                task = client.send_message(dialog.entity, message, reply_to=topic_id)
-            else:
-                # Send message to normal group
-                task = client.forward_messages(dialog.entity.id, message)
+            async def send_to_group():
+                try:
+                    if chat_username in FORUM_TOPICS:
+                        topic_id = FORUM_TOPICS[chat_username]
+                        await client.send_message(dialog.entity, message, reply_to=topic_id)
+                    else:
+                        await client.forward_messages(dialog.entity.id, message)
 
-            tasks.append(task)
+                    print(f"✅ Message sent to {chat_username}")
 
-    await asyncio.gather(*tasks)  # Send to all groups at once
-    print("Forwarded to all groups and topics.")
+                except errors.SlowModeWaitError:
+                    print(f"⏩ Skipping {chat_username} due to slow mode")
+
+                except Exception as e:
+                    print(f"⚠ Error sending to {chat_username}: {e}")
+
+            tasks.append(send_to_group())
+
+    await asyncio.gather(*tasks)  # Send messages in parallel
 
 async def main():
     async with TelegramClient(StringSession(SESSION_STRING), API_ID, API_HASH) as client:
@@ -48,12 +55,12 @@ async def main():
         message = await client.get_messages(entity, ids=message_id)
 
         if not message:
-            print("Message not found.")
+            print("❌ Message not found.")
             return
 
         while True:
             await forward_messages(client, message)
-            print(f"Waiting {DELAY} seconds before next batch...")
+            print(f"⏳ Waiting {DELAY} seconds before the next batch...")
             await asyncio.sleep(DELAY)
 
 asyncio.run(main())
