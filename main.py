@@ -1,20 +1,19 @@
 import asyncio
 from telethon import TelegramClient
 from telethon.sessions import StringSession
-from telethon.tl.types import InputPeerChannel, InputForumTopic
 
 # Configuration
 API_ID = 26075878  # Replace with your API ID
 API_HASH = "7146213fe4324fcaca1bb6be7a2aef33"  # Replace with your API hash
 SESSION_STRING = input("Enter your Telethon string session: ").strip()
 
-DELAY = 3600  # Delay in seconds between forwards
+DELAY = 3600  # Delay in seconds between batches
 
 # Forum groups with specific topic IDs
 FORUM_TOPICS = {
-    "buffestmarket": 33,  # Example Topic ID
-    "stockless": 38,      # Example Topic ID
-    "combienforum": 11    # Example Topic ID
+    "buffestmarket": 33,
+    "stockless": 38,
+    "combienforum": 11
 }
 
 async def forward_messages(client, message):
@@ -28,13 +27,11 @@ async def forward_messages(client, message):
             if chat_username in FORUM_TOPICS:
                 # Send message to a specific topic inside a forum
                 topic_id = FORUM_TOPICS[chat_username]
-                peer = await client.get_input_entity(chat_username)
-                forum_topic = InputForumTopic(peer, topic_id)
-                task = client.forward_messages(forum_topic, message)
+                task = client.send_message(dialog.entity, message, reply_to=topic_id)
             else:
                 # Send message to normal group
                 task = client.forward_messages(dialog.entity.id, message)
-            
+
             tasks.append(task)
 
     await asyncio.gather(*tasks)  # Send to all groups at once
