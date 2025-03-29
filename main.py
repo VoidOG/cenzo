@@ -2,8 +2,6 @@ import asyncio
 from telethon.sync import TelegramClient
 from telethon.sessions import StringSession
 from telethon.errors import SessionPasswordNeededError
-from telethon.tl.functions.messages import GetMessagesRequest
-from telethon.tl.types import InputMessageID
 
 # Configuration
 API_ID = 26075878  # Replace with your API ID
@@ -33,16 +31,11 @@ async def main():
         entity = await client.get_entity(chat_username)
 
         # Fetch the message
-        message = await client(GetMessagesRequest(
-            peer=entity,
-            id=[InputMessageID(message_id)]
-        ))
+        message = await client.get_messages(entity, ids=message_id)
 
-        if not message.messages:
+        if not message:
             print("Message not found.")
             return
-
-        msg_to_forward = message.messages[0]
 
         # Fetch all groups the account is in
         dialogs = await client.get_dialogs()
@@ -51,7 +44,7 @@ async def main():
         # Forward to each group
         for group in groups:
             try:
-                await client.forward_messages(group.id, msg_to_forward)
+                await client.forward_messages(group.id, message)
                 print(f"Forwarded to {group.title}")
                 await asyncio.sleep(DELAY)  # Wait before sending to next group
             except Exception as e:
